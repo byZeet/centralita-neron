@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Phone, User, Clock, CheckCircle, XCircle, MinusCircle, LogIn, Monitor, RefreshCw, Trash2, AlertTriangle, Check, X } from 'lucide-react';
+import { Phone, User, Clock, CheckCircle, XCircle, MinusCircle, LogIn, Monitor, RefreshCw, Trash2, AlertTriangle, Check, X, Ticket, Plus, Calendar, MessageSquare, PhoneIncoming, FileText, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -32,11 +32,22 @@ const SHIFT_CONFIG = {
     afternoon: { label: 'Tarde', icon: Clock, color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/20' }
 };
 
-function OperatorCard({ operator }) {
+function OperatorCard({ operator, ticketCount, onViewTickets }) {
     const shift = SHIFT_CONFIG[operator.shift]; // No fallback to morning
 
     return (
-        <div className="bg-surface/50 border border-white/5 rounded-xl p-3 flex flex-col justify-center items-center hover:bg-surface/80 transition-all duration-300 backdrop-blur-sm group gap-2 text-center shadow-sm w-full">
+        <div className="bg-surface/50 border border-white/5 rounded-xl p-3 flex flex-col justify-center items-center hover:bg-surface/80 transition-all duration-300 backdrop-blur-sm group gap-2 text-center shadow-sm w-full relative">
+            {/* Ticket Badge */}
+            {ticketCount > 0 && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onViewTickets(operator); }}
+                    className="absolute top-2 right-2 bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-lg flex items-center gap-1 hover:scale-110 transition-transform z-10"
+                    title="Ver tickets asignados"
+                >
+                    <Ticket className="w-3 h-3" /> {ticketCount}
+                </button>
+            )}
+
             <div className="w-10 h-10 min-w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg group-hover:scale-110 transition-transform">
                 {operator.name.charAt(0).toUpperCase()}
             </div>
@@ -54,6 +65,83 @@ function OperatorCard({ operator }) {
                 {!shift && <div className="h-[19px] mb-2"></div>} {/* Spacer to keep alignment */}
 
                 <StatusBadge status={operator.status} className="w-full justify-center text-[10px] py-1 h-auto" />
+            </div>
+        </div>
+    );
+}
+
+// Ticket Components
+function TicketCard({ ticket, onAssign, onComplete, user }) {
+    const isAssignedToMe = ticket.assigned_to === user.id;
+    const isPending = ticket.status === 'pending';
+
+    return (
+        <div className={cn(
+            "p-3 rounded-lg border flex flex-col gap-2 transition-all relative overflow-hidden group",
+            isPending ? "bg-warning/5 border-warning/20 hover:border-warning/40" : "bg-blue-500/5 border-blue-500/20"
+        )}>
+            {/* Status Stripe */}
+            <div className={cn(
+                "absolute left-0 top-0 bottom-0 w-1",
+                isPending ? "bg-warning" : "bg-blue-500"
+            )} />
+
+            <div className="flex justify-between items-start pl-2">
+                <div className="flex flex-col">
+                    <span className="font-mono text-xs font-bold opacity-50">#{ticket.id}</span>
+                    <span className="text-[9px] text-textMuted flex items-center gap-1 leading-none mt-1">
+                        <Plus className="w-2.5 h-2.5 opacity-50" />
+                        <span>Ticket creado por <span className="text-white/70 font-medium">{ticket.creator_name || 'Sistema'}</span></span>
+                    </span>
+                </div>
+                <span className="text-[10px] text-textMuted flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+            </div>
+
+            <div className="pl-2">
+                <h4 className="font-bold text-sm text-text truncate" title={ticket.client_name}>{ticket.client_name}</h4>
+                <div className="text-xs text-textMuted flex items-center gap-1 mt-0.5">
+                    <PhoneIncoming className="w-3 h-3" /> {ticket.client_number}
+                </div>
+            </div>
+
+            <div className="bg-black/20 p-2 rounded text-xs text-textMuted italic pl-2 border-l-2 border-white/10 ml-2">
+                "{ticket.issue_description}"
+            </div>
+
+            <div className="pl-2 pt-1 flex flex-col gap-2">
+                {isPending ? (
+                    <button
+                        onClick={() => onAssign(ticket.id)}
+                        className="text-xs bg-warning/10 text-warning hover:bg-warning hover:text-black font-bold px-2 py-2 rounded transition-colors w-full flex justify-center items-center gap-1"
+                    >
+                        <User className="w-3 h-3" /> Recoger Ticket
+                    </button>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <div className={cn(
+                            "text-[10px] font-medium px-2 py-1.5 rounded flex items-center gap-1.5 justify-center border transition-colors",
+                            isAssignedToMe
+                                ? "bg-blue-500/10 text-blue-400 border-blue-500/20 flex-1"
+                                : "bg-surfaceHighlight text-textMuted border-white/5 w-full"
+                        )}>
+                            <User className="w-3 h-3" />
+                            <span>Asignado a <span className={isAssignedToMe ? "text-blue-300 font-bold" : "text-white/70 font-bold"}>{isAssignedToMe ? 'mí' : (ticket.assignee_name || '...')}</span></span>
+                        </div>
+
+                        {isAssignedToMe && (
+                            <button
+                                onClick={() => onComplete(ticket.id)}
+                                className="text-[10px] bg-success/20 text-success hover:bg-success hover:text-white border border-success/50 font-bold px-3 py-1.5 rounded transition-colors flex items-center gap-1 shadow-lg shadow-success/10"
+                                title="Marcar como resuelto"
+                            >
+                                <CheckCircle className="w-3 h-3" /> Terminar
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -127,6 +215,134 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
                 <div className="flex justify-end gap-3">
                     <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm bg-surfaceHighlight hover:bg-white/10 text-white transition-colors">Cancelar</button>
                     <button onClick={onConfirm} className="px-4 py-2 rounded-lg text-sm bg-error hover:bg-red-600 text-white font-medium transition-colors">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function TicketQueue({ tickets, onAssign, onComplete, onCreate, user }) {
+    // Show only pending and assigned (not completed)
+    const activeTickets = tickets.filter(t => t.status !== 'completed');
+
+    return (
+        <div className="bg-surface border border-white/5 rounded-2xl p-4 h-full flex flex-col min-h-[400px]">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Ticket className="w-5 h-5 text-primary" /> Cola de Llamadas
+                </h2>
+                <button
+                    onClick={onCreate}
+                    className="bg-primary hover:bg-blue-600 text-white p-1.5 px-3 rounded-lg flex items-center gap-1 text-xs font-bold transition-colors shadow-lg shadow-blue-900/20"
+                >
+                    <Plus className="w-4 h-4" /> Nuevo Ticket
+                </button>
+            </div>
+
+            <div className="space-y-3 overflow-y-auto flex-1 pr-1 custom-scrollbar">
+                {activeTickets.length === 0 ? (
+                    <div className="text-center py-10 text-textMuted opacity-50 italic flex flex-col items-center gap-2">
+                        <div className="bg-white/5 p-3 rounded-full"><Ticket className="w-6 h-6 opacity-50" /></div>
+                        No hay tickets pendientes
+                    </div>
+                ) : (
+                    activeTickets.map(t => (
+                        <TicketCard key={t.id} ticket={t} onAssign={onAssign} onComplete={onComplete} user={user} />
+                    ))
+                )}
+            </div>
+        </div>
+    );
+}
+
+function CreateTicketModal({ isOpen, onClose, onCreate }) {
+    if (!isOpen) return null;
+    const [name, setName] = useState('');
+    const [number, setNumber] = useState('');
+    const [issue, setIssue] = useState('');
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        await onCreate({ client_name: name, client_number: number, issue_description: issue });
+        onClose();
+        setName(''); setNumber(''); setIssue('');
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-surface border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+                <h3 className="text-lg font-bold mb-4 text-white flex items-center gap-2"><Plus className="w-5 h-5 text-primary" /> Crear Ticket</h3>
+                <form onSubmit={handleSubmit} className="space-y-3">
+                    <div>
+                        <label className="text-xs text-textMuted ml-1 mb-1 block">Nombre Cliente</label>
+                        <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-surfaceHighlight p-2.5 rounded-lg text-sm text-text border border-white/5 focus:ring-2 focus:ring-primary focus:outline-none transition-all" required autoFocus />
+                    </div>
+                    <div>
+                        <label className="text-xs text-textMuted ml-1 mb-1 block">Teléfono</label>
+                        <input value={number} onChange={e => setNumber(e.target.value)} className="w-full bg-surfaceHighlight p-2.5 rounded-lg text-sm text-text border border-white/5 focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                    </div>
+                    <div>
+                        <label className="text-xs text-textMuted ml-1 mb-1 block">Incidencia</label>
+                        <textarea value={issue} onChange={e => setIssue(e.target.value)} className="w-full bg-surfaceHighlight p-2.5 rounded-lg text-sm text-text border border-white/5 h-24 resize-none focus:ring-2 focus:ring-primary focus:outline-none transition-all" required />
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                        <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg text-sm bg-surfaceHighlight hover:bg-white/10 text-white transition-colors">Cancelar</button>
+                        <button type="submit" className="px-3 py-2 rounded-lg text-sm bg-primary hover:bg-blue-600 text-white font-bold transition-colors shadow-lg shadow-blue-900/20">Crear Ticket</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function TicketHistoryModal({ operator, tickets, onClose }) {
+    if (!operator) return null;
+    const myTickets = tickets.filter(t => t.assigned_to === operator.id);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-surface border border-white/10 rounded-2xl p-6 max-w-2xl w-full shadow-2xl scale-100 animate-in zoom-in-95 duration-200 max-h-[80vh] flex flex-col">
+                <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/5">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <Ticket className="w-5 h-5 text-primary" /> Tickets de {operator.name}
+                    </h3>
+                    <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5 text-textMuted hover:text-white" /></button>
+                </div>
+
+                <div className="overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                    {myTickets.length === 0 ? (
+                        <div className="text-center py-12 text-textMuted opacity-50 flex flex-col items-center gap-2">
+                            <Ticket className="w-8 h-8 opacity-30" />
+                            Sin tickets asignados
+                        </div>
+                    ) : (
+                        myTickets.map(t => (
+                            <div key={t.id} className="bg-surfaceHighlight/30 p-4 rounded-xl border border-white/5 hover:bg-surfaceHighlight/50 transition-colors">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-sm">#{t.id} - {t.client_name}</span>
+                                            <span className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-textMuted flex items-center gap-1">
+                                                <Plus className="w-2.5 h-2.5" />
+                                                <span>Ticket creado por <span className="text-white/70 font-medium">{t.creator_name || 'Sistema'}</span></span>
+                                            </span>
+                                        </div>
+                                        <span className="text-xs text-textMuted flex items-center gap-1 mt-0.5"><PhoneIncoming className="w-3 h-3" /> {t.client_number}</span>
+                                    </div>
+                                    <span className="text-xs text-textMuted bg-white/5 px-2 py-1 rounded-lg">{new Date(t.created_at).toLocaleString()}</span>
+                                </div>
+                                <div className="text-sm text-textMuted mt-2 bg-black/20 p-3 rounded-lg italic border-l-2 border-primary/30">
+                                    "{t.issue_description}"
+                                </div>
+                                <div className="mt-3 text-xs flex gap-2 justify-end">
+                                    <span className={cn("px-2 py-1 rounded font-bold border", t.status === 'completed' ? "bg-success/10 text-success border-success/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20")}>
+                                        {t.status === 'completed' ? 'Completado' : 'En Proceso'}
+                                    </span>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
         </div>
@@ -236,6 +452,12 @@ export default function App() {
     const [toasts, setToasts] = useState([]);
     const [confirmModal, setConfirmModal] = useState(null);
     const prevOperatorsRef = useRef([]);
+    const prevTicketsRef = useRef([]);
+
+    // Ticket State
+    const [tickets, setTickets] = useState([]);
+    const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+    const [viewTicketOperator, setViewTicketOperator] = useState(null);
 
     const addToast = (message, type = 'success') => {
         const id = Date.now() + Math.random();
@@ -244,18 +466,24 @@ export default function App() {
 
     const fetchOperators = async () => {
         try {
-            const res = await fetch('/api/operators');
-            const data = await res.json();
-            if (data.operators) {
+            // Fetch Operators and Tickets
+            const [resOps, resTickets] = await Promise.all([
+                fetch('/api/operators'),
+                fetch('/api/tickets')
+            ]);
+
+            const dataOps = await resOps.json();
+            const dataTickets = await resTickets.json();
+
+            if (dataOps.operators) {
                 // Check for status changes
-                const newOps = data.operators;
+                const newOps = dataOps.operators;
                 const prevOps = prevOperatorsRef.current;
 
-                if (prevOps.length > 0 && user) { // Only notify if we have history and are logged in
+                if (prevOps.length > 0 && user) {
                     newOps.forEach(newOp => {
                         const oldOp = prevOps.find(p => p.id === newOp.id);
                         if (oldOp && oldOp.status !== newOp.status && newOp.id !== user.id) {
-                            // Status changed and not me
                             const statusLabel = STATUS_CONFIG[newOp.status]?.label || 'Desconectado';
                             addToast(
                                 <span><strong className="font-bold text-base">{newOp.name}</strong> está ahora {statusLabel}</span>,
@@ -264,13 +492,102 @@ export default function App() {
                         }
                     });
                 }
-
                 setOperators(newOps);
                 prevOperatorsRef.current = newOps;
             }
+
+            if (dataTickets.tickets) {
+                const newTickets = dataTickets.tickets;
+                const prevTickets = prevTicketsRef.current;
+
+                if (prevTickets.length > 0 && user) {
+                    newTickets.forEach(ticket => {
+                        const oldTicket = prevTickets.find(p => p.id === ticket.id);
+
+                        // Scenario 1: New Ticket
+                        if (!oldTicket) {
+                            if (ticket.created_by !== user.id) {
+                                addToast(
+                                    <span>Nuevo ticket <strong className="font-bold text-base">#{ticket.id}</strong> de <strong className="font-bold">{ticket.client_name}</strong> creado por {ticket.creator_name || 'Sistema'}</span>,
+                                    'warning'
+                                );
+                            }
+                        }
+                        // Scenario 2: Status Change
+                        else if (oldTicket.status !== ticket.status) {
+                            // Ticket Taken (Assigned)
+                            if (ticket.status === 'assigned' && ticket.assigned_to !== user.id) {
+                                addToast(
+                                    <span><strong className="font-bold">{ticket.assignee_name}</strong> ha recogido el ticket <strong className="font-bold">#{ticket.id}</strong> de <strong className="font-bold">{ticket.client_name}</strong></span>,
+                                    'available'
+                                );
+                            }
+                            // Ticket Finished (Completed)
+                            else if (ticket.status === 'completed' && oldTicket.status !== 'completed') {
+                                if (ticket.assigned_to !== user.id) {
+                                    addToast(
+                                        <span>Ticket <strong className="font-bold">#{ticket.id}</strong> de <strong className="font-bold">{ticket.client_name}</strong> finalizado por <strong className="font-bold">{ticket.assignee_name || 'Sistema'}</strong></span>,
+                                        'success'
+                                    );
+                                }
+                            }
+                        }
+                    });
+                }
+                setTickets(newTickets);
+                prevTicketsRef.current = newTickets;
+            }
+
         } catch (error) {
-            console.error("Error fetching operators:", error);
+            console.error("Error fetching data:", error);
         }
+    };
+
+    // Ticket Actions
+    const handleCreateTicket = async (ticketData) => {
+        try {
+            const res = await fetch('/api/tickets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...ticketData, created_by: user.id }),
+            });
+            if (res.ok) {
+                addToast('Ticket creado correctamente', 'success');
+                fetchOperators();
+            } else {
+                addToast('Error creando ticket', 'error');
+            }
+        } catch (err) { console.error(err); addToast('Error creando ticket', 'error'); }
+    };
+
+    const handleAssignTicket = async (ticketId) => {
+        if (!user) return;
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assigned_to: user.id, status: 'assigned' }),
+            });
+            if (res.ok) {
+                addToast('Ticket asignado a ti', 'success');
+                fetchOperators();
+            }
+        } catch (err) { console.error(err); addToast('Error asignando ticket', 'error'); }
+    };
+
+    const handleCompleteTicket = async (ticketId) => {
+        if (!user) return;
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'completed' }),
+            });
+            if (res.ok) {
+                addToast('Ticket completado', 'success');
+                fetchOperators();
+            }
+        } catch (err) { console.error(err); addToast('Error completando ticket', 'error'); }
     };
 
     // Initial Poll
@@ -434,8 +751,11 @@ export default function App() {
             </div>
             {confirmModal && <ConfirmModal {...confirmModal} onCancel={() => setConfirmModal(null)} />}
 
+            <CreateTicketModal isOpen={isTicketModalOpen} onClose={() => setIsTicketModalOpen(false)} onCreate={handleCreateTicket} />
+            <TicketHistoryModal operator={viewTicketOperator} tickets={tickets} onClose={() => setViewTicketOperator(null)} />
+
             {/* Header */}
-            <header className="max-w-[90rem] mx-auto flex flex-col md:flex-row justify-between items-center mb-8 md:mb-12 gap-4">
+            <header className="max-w-[95rem] mx-auto flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                 <div className="flex items-center gap-3">
                     <div className="bg-primary/20 p-2 rounded-lg">
                         <Phone className="w-8 h-8 text-primary" />
@@ -477,7 +797,7 @@ export default function App() {
                 </div>
             </header>
 
-            <main className="max-w-[90rem] mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
+            <main className="max-w-[95rem] mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
 
                 {/* Left Column: My Status Control (Fixed width) */}
                 <div className="md:col-span-3 xl:col-span-2 space-y-6">
@@ -579,8 +899,19 @@ export default function App() {
                     )}
                 </div>
 
+                {/* Middle Column: Ticket Queue */}
+                <div className="md:col-span-4 xl:col-span-3 h-fit sticky top-8">
+                    <TicketQueue
+                        tickets={tickets}
+                        onAssign={handleAssignTicket}
+                        onComplete={handleCompleteTicket}
+                        onCreate={() => setIsTicketModalOpen(true)}
+                        user={user}
+                    />
+                </div>
+
                 {/* Right Column: Directory */}
-                <div className="md:col-span-9 xl:col-span-10">
+                <div className="md:col-span-5 xl:col-span-7">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-semibold flex items-center gap-2">
                             <Monitor className="w-5 h-5 text-primary" /> Directorio ({operators.length})
@@ -590,20 +921,21 @@ export default function App() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                         {sortedDeptKeys.map(dept => (
                             <div key={dept} className="animate-in fade-in slide-in-from-bottom-4 duration-500 bg-surface/30 p-3 rounded-xl border border-white/5 h-fit min-w-0">
                                 <h3 className="text-xs font-bold text-textMuted uppercase tracking-wider mb-3 px-1 border-b border-white/5 pb-2 flex justify-between items-center">
                                     <span className="truncate mr-2" title={dept}>{dept.replace('Dpto.', '')}</span>
                                     <span className="bg-white/10 px-1.5 py-0.5 rounded text-text text-[10px]">{operatorsByDept[dept].length}</span>
                                 </h3>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 gap-2">
                                     {operatorsByDept[dept].length > 0 ? (
-                                        operatorsByDept[dept].map(op => (
-                                            <OperatorCard key={op.id} operator={op} />
-                                        ))
+                                        operatorsByDept[dept].map(op => {
+                                            const opTickets = tickets.filter(t => t.assigned_to === op.id && t.status !== 'completed').length;
+                                            return <OperatorCard key={op.id} operator={op} ticketCount={opTickets} onViewTickets={setViewTicketOperator} />;
+                                        })
                                     ) : (
-                                        <div className="col-span-2 text-center py-4 text-textMuted text-[10px] italic opacity-50 border border-dashed border-white/10 rounded-lg">
+                                        <div className="col-span-1 text-center py-4 text-textMuted text-[10px] italic opacity-50 border border-dashed border-white/10 rounded-lg">
                                             Vacío
                                         </div>
                                     )}

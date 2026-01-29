@@ -78,6 +78,29 @@ const bcrypt = require('bcryptjs');
     }
   });
   
+  // Check/Create tickets table
+  db.run(`CREATE TABLE IF NOT EXISTS tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_name TEXT,
+    client_number TEXT,
+    issue_description TEXT,
+    status TEXT DEFAULT 'pending',
+    assigned_to INTEGER,
+    created_by INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(assigned_to) REFERENCES operators(id),
+    FOREIGN KEY(created_by) REFERENCES operators(id)
+  )`);
+
+  // Migration: Add created_by if it doesn't exist
+  db.all("PRAGMA table_info(tickets)", (err, columns) => {
+    if (err) return;
+    const hasCreatedBy = columns.some(col => col.name === 'created_by');
+    if (!hasCreatedBy) {
+      db.run("ALTER TABLE tickets ADD COLUMN created_by INTEGER REFERENCES operators(id)");
+    }
+  });
+  
   // Seed initial data
   db.get("SELECT count(*) as count FROM operators", (err, row) => {
       // Check if admin exists

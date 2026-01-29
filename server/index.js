@@ -138,6 +138,63 @@ app.post('/api/status', (req, res) => {
   });
 });
 
+// Tickets API
+
+// Get all tickets
+app.get('/api/tickets', (req, res) => {
+    db.all(`
+        SELECT t.*, o1.name as assignee_name, o2.name as creator_name 
+        FROM tickets t 
+        LEFT JOIN operators o1 ON t.assigned_to = o1.id 
+        LEFT JOIN operators o2 ON t.created_by = o2.id 
+        ORDER BY t.created_at DESC
+    `, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ tickets: rows });
+    });
+});
+
+// Create ticket
+app.post('/api/tickets', (req, res) => {
+    const { client_name, client_number, issue_description, created_by } = req.body;
+    if (!client_name || !issue_description) return res.status(400).json({ error: "Faltan datos" });
+    
+    db.run("INSERT INTO tickets (client_name, client_number, issue_description, created_by) VALUES (?, ?, ?, ?)", 
+    [client_name, client_number, issue_description, created_by], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID, success: true });
+    });
+});
+
+// Update ticket (Assign)
+app.put('/api/tickets/:id', (req, res) => {
+    const { assigned_to, status } = req.body;
+    const { id } = req.params;
+    
+    let query = "UPDATE tickets SET ";
+    let params = [];
+    let updates = [];
+    
+    if (assigned_to !== undefined) {
+        updates.push("assigned_to = ?");
+        params.push(assigned_to);
+    }
+    if (status !== undefined) {
+        updates.push("status = ?");
+        params.push(status);
+    }
+    
+    if (updates.length === 0) return res.json({ success: true }); 
+    
+    query += updates.join(", ") + " WHERE id = ?";
+    params.push(id);
+    
+    db.run(query, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
 // Serve frontend in production (after build)
 const clientBuildPath = path.join(__dirname, '../client/dist');
 app.use(express.static(clientBuildPath));
