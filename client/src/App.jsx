@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Phone, User, Clock, CheckCircle, XCircle, MinusCircle, LogIn, Monitor, RefreshCw, Trash2, AlertTriangle, Check, X, Ticket, Plus, Calendar, MessageSquare, PhoneIncoming, FileText, ChevronRight } from 'lucide-react';
+import { Phone, User, Clock, CheckCircle, XCircle, MinusCircle, LogIn, Monitor, RefreshCw, Trash2, AlertTriangle, Check, X, Ticket, Plus, Calendar, MessageSquare, PhoneIncoming, FileText, ChevronRight, ArrowRightCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -71,7 +71,7 @@ function OperatorCard({ operator, ticketCount, onViewTickets }) {
 }
 
 // Ticket Components
-function TicketCard({ ticket, onAssign, onComplete, user }) {
+function TicketCard({ ticket, onAssign, onComplete, onTransfer, user }) {
     const isAssignedToMe = ticket.assigned_to === user.id;
     const isPending = ticket.status === 'pending';
 
@@ -107,6 +107,14 @@ function TicketCard({ ticket, onAssign, onComplete, user }) {
                 </div>
             </div>
 
+            {ticket.transferor_name && (
+                <div className="pl-2">
+                    <span className="text-[9px] bg-purple-500/10 text-purple-400 px-1.5 py-1 rounded border border-purple-500/20 flex items-center gap-1.5 w-fit font-medium">
+                        <ArrowRightCircle className="w-2.5 h-2.5" /> Traspasado de {ticket.transferor_name}
+                    </span>
+                </div>
+            )}
+
             <div className="bg-black/20 p-2 rounded text-xs text-textMuted italic pl-2 border-l-2 border-white/10 ml-2">
                 "{ticket.issue_description}"
             </div>
@@ -132,13 +140,22 @@ function TicketCard({ ticket, onAssign, onComplete, user }) {
                         </div>
 
                         {isAssignedToMe && (
-                            <button
-                                onClick={() => onComplete(ticket.id)}
-                                className="text-[10px] bg-success/20 text-success hover:bg-success hover:text-white border border-success/50 font-bold px-3 py-1.5 rounded transition-colors flex items-center gap-1 shadow-lg shadow-success/10"
-                                title="Marcar como resuelto"
-                            >
-                                <CheckCircle className="w-3 h-3" /> Terminar
-                            </button>
+                            <>
+                                <button
+                                    onClick={() => onTransfer(ticket.id)}
+                                    className="p-1.5 rounded bg-surfaceHighlight hover:bg-white/10 text-textMuted hover:text-white transition-colors border border-white/5"
+                                    title="Traspasar ticket"
+                                >
+                                    <ArrowRightCircle className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => onComplete(ticket.id)}
+                                    className="text-[10px] bg-success/20 text-success hover:bg-success hover:text-white border border-success/50 font-bold px-3 py-1.5 rounded transition-colors flex items-center gap-1 shadow-lg shadow-success/10"
+                                    title="Marcar como resuelto"
+                                >
+                                    <CheckCircle className="w-3 h-3" /> Terminar
+                                </button>
+                            </>
                         )}
                     </div>
                 )}
@@ -221,7 +238,7 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
     );
 }
 
-function TicketQueue({ tickets, onAssign, onComplete, onCreate, user }) {
+function TicketQueue({ tickets, onAssign, onComplete, onTransfer, onCreate, user }) {
     // Show only pending and assigned (not completed)
     const activeTickets = tickets.filter(t => t.status !== 'completed');
 
@@ -247,9 +264,63 @@ function TicketQueue({ tickets, onAssign, onComplete, onCreate, user }) {
                     </div>
                 ) : (
                     activeTickets.map(t => (
-                        <TicketCard key={t.id} ticket={t} onAssign={onAssign} onComplete={onComplete} user={user} />
+                        <TicketCard key={t.id} ticket={t} onAssign={onAssign} onComplete={onComplete} onTransfer={onTransfer} user={user} />
                     ))
                 )}
+            </div>
+        </div>
+    );
+}
+
+function TransferTicketModal({ isOpen, onClose, onTransfer, operators, currentUserId, ticketId }) {
+    if (!isOpen) return null;
+
+    // Filter operators: online and not current user
+    const otherOperators = operators.filter(op => op.id !== currentUserId && op.status !== 'offline');
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-surface border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <ArrowRightCircle className="w-5 h-5 text-primary" /> Traspasar Ticket #{ticketId}
+                    </h3>
+                    <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5 text-textMuted" /></button>
+                </div>
+
+                <div className="space-y-3 max-h-[350px] overflow-y-auto px-4 py-2 custom-scrollbar">
+                    {otherOperators.length === 0 ? (
+                        <div className="text-center py-8 text-textMuted flex flex-col items-center gap-3">
+                            <div className="bg-white/5 p-3 rounded-full opacity-30"><User className="w-6 h-6" /></div>
+                            <p className="text-xs italic">No hay otros operadores disponibles en este momento.</p>
+                        </div>
+                    ) : (
+                        otherOperators.map(op => (
+                            <button
+                                key={op.id}
+                                onClick={() => onTransfer(op.id)}
+                                className="w-full flex items-center justify-between p-3.5 rounded-xl bg-surfaceHighlight/50 hover:bg-surfaceHighlight hover:scale-[1.03] active:scale-95 transition-all border border-white/5 group shadow-sm"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-xs text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                                        {op.name.charAt(0)}
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="text-sm font-bold text-white">{op.name}</div>
+                                        <div className="text-[10px] text-textMuted uppercase font-semibold">{op.department.replace('Dpto.', '')}</div>
+                                    </div>
+                                </div>
+                                <div className="p-1.5 rounded-full bg-white/5 group-hover:bg-primary/20 text-textMuted group-hover:text-primary transition-all">
+                                    <ChevronRight className="w-4 h-4" />
+                                </div>
+                            </button>
+                        ))
+                    )}
+                </div>
+
+                <div className="flex justify-end mt-6">
+                    <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm bg-surfaceHighlight hover:bg-white/10 text-white transition-colors font-medium">Cancelar</button>
+                </div>
             </div>
         </div>
     );
@@ -321,12 +392,18 @@ function TicketHistoryModal({ operator, tickets, onClose }) {
                             <div key={t.id} className="bg-surfaceHighlight/30 p-4 rounded-xl border border-white/5 hover:bg-surfaceHighlight/50 transition-colors">
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
-                                        <div className="flex items-center gap-2 mb-1">
+                                        <div className="flex flex-wrap gap-2 mb-1 items-center">
                                             <span className="font-bold text-sm">#{t.id} - {t.client_name}</span>
                                             <span className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-textMuted flex items-center gap-1">
                                                 <Plus className="w-2.5 h-2.5" />
                                                 <span>Ticket creado por <span className="text-white/70 font-medium">{t.creator_name || 'Sistema'}</span></span>
                                             </span>
+                                            {t.transferor_name && (
+                                                <span className="text-[9px] bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded text-purple-400 flex items-center gap-1">
+                                                    <ArrowRightCircle className="w-2.5 h-2.5" />
+                                                    <span>Traspasado de <span className="font-bold">{t.transferor_name}</span></span>
+                                                </span>
+                                            )}
                                         </div>
                                         <span className="text-xs text-textMuted flex items-center gap-1 mt-0.5"><PhoneIncoming className="w-3 h-3" /> {t.client_number}</span>
                                     </div>
@@ -457,6 +534,7 @@ export default function App() {
     // Ticket State
     const [tickets, setTickets] = useState([]);
     const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+    const [transferTicketId, setTransferTicketId] = useState(null);
     const [viewTicketOperator, setViewTicketOperator] = useState(null);
 
     const addToast = (message, type = 'success') => {
@@ -513,21 +591,41 @@ export default function App() {
                                 );
                             }
                         }
-                        // Scenario 2: Status Change
-                        else if (oldTicket.status !== ticket.status) {
-                            // Ticket Taken (Assigned)
-                            if (ticket.status === 'assigned' && ticket.assigned_to !== user.id) {
-                                addToast(
-                                    <span><strong className="font-bold">{ticket.assignee_name}</strong> ha recogido el ticket <strong className="font-bold">#{ticket.id}</strong> de <strong className="font-bold">{ticket.client_name}</strong></span>,
-                                    'available'
-                                );
-                            }
-                            // Ticket Finished (Completed)
-                            else if (ticket.status === 'completed' && oldTicket.status !== 'completed') {
-                                if (ticket.assigned_to !== user.id) {
+                        if (oldTicket) {
+                            // Scenario 2: Status Change
+                            if (oldTicket.status !== ticket.status) {
+                                // Ticket Taken (Assigned)
+                                if (ticket.status === 'assigned' && ticket.assigned_to !== user.id) {
                                     addToast(
-                                        <span>Ticket <strong className="font-bold">#{ticket.id}</strong> de <strong className="font-bold">{ticket.client_name}</strong> finalizado por <strong className="font-bold">{ticket.assignee_name || 'Sistema'}</strong></span>,
-                                        'success'
+                                        <span><strong className="font-bold">{ticket.assignee_name}</strong> ha recogido el ticket <strong className="font-bold">#{ticket.id}</strong> de <strong className="font-bold">{ticket.client_name}</strong></span>,
+                                        'available'
+                                    );
+                                }
+                                // Ticket Finished (Completed)
+                                else if (ticket.status === 'completed' && oldTicket.status !== 'completed') {
+                                    if (ticket.assigned_to !== user.id) {
+                                        addToast(
+                                            <span>Ticket <strong className="font-bold">#{ticket.id}</strong> de <strong className="font-bold">{ticket.client_name}</strong> finalizado por <strong className="font-bold">{ticket.assignee_name || 'Sistema'}</strong></span>,
+                                            'success'
+                                        );
+                                    }
+                                }
+                            }
+
+                            // Scenario 3: Ticket Transferred (Detect by assigned_to change)
+                            if (ticket.status === 'assigned' && oldTicket.assigned_to !== null && oldTicket.assigned_to !== ticket.assigned_to) {
+                                // If I am the receiver
+                                if (ticket.assigned_to === user.id) {
+                                    addToast(
+                                        <span>¡Has recibido el ticket <strong className="font-bold">#{ticket.id}</strong> de <strong className="font-bold">{ticket.transferor_name}</strong>!</span>,
+                                        'warning'
+                                    );
+                                }
+                                // If I am neither sender nor receiver
+                                else if (oldTicket.assigned_to !== user.id) {
+                                    addToast(
+                                        <span><strong className="font-bold">{ticket.transferor_name}</strong> ha traspasado el ticket <strong className="font-bold">#{ticket.id}</strong> a <strong className="font-bold">{ticket.assignee_name}</strong></span>,
+                                        'status'
                                     );
                                 }
                             }
@@ -588,6 +686,26 @@ export default function App() {
                 fetchOperators();
             }
         } catch (err) { console.error(err); addToast('Error completando ticket', 'error'); }
+    };
+
+    const handleTransferTicket = async (targetOperatorId) => {
+        if (!user || !transferTicketId) return;
+        try {
+            const res = await fetch(`/api/tickets/${transferTicketId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    assigned_to: targetOperatorId,
+                    transferred_from: user.id
+                }),
+            });
+            if (res.ok) {
+                const targetOp = operators.find(op => op.id === targetOperatorId);
+                addToast(`Ticket traspasado a ${targetOp?.name}`, 'success');
+                setTransferTicketId(null);
+                fetchOperators();
+            }
+        } catch (err) { console.error(err); addToast('Error traspasando ticket', 'error'); }
     };
 
     // Initial Poll
@@ -752,6 +870,14 @@ export default function App() {
             {confirmModal && <ConfirmModal {...confirmModal} onCancel={() => setConfirmModal(null)} />}
 
             <CreateTicketModal isOpen={isTicketModalOpen} onClose={() => setIsTicketModalOpen(false)} onCreate={handleCreateTicket} />
+            <TransferTicketModal
+                isOpen={!!transferTicketId}
+                onClose={() => setTransferTicketId(null)}
+                onTransfer={handleTransferTicket}
+                operators={operators}
+                currentUserId={user.id}
+                ticketId={transferTicketId}
+            />
             <TicketHistoryModal operator={viewTicketOperator} tickets={tickets} onClose={() => setViewTicketOperator(null)} />
 
             {/* Header */}
@@ -905,6 +1031,7 @@ export default function App() {
                         tickets={tickets}
                         onAssign={handleAssignTicket}
                         onComplete={handleCompleteTicket}
+                        onTransfer={setTransferTicketId}
                         onCreate={() => setIsTicketModalOpen(true)}
                         user={user}
                     />

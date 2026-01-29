@@ -143,10 +143,11 @@ app.post('/api/status', (req, res) => {
 // Get all tickets
 app.get('/api/tickets', (req, res) => {
     db.all(`
-        SELECT t.*, o1.name as assignee_name, o2.name as creator_name 
+        SELECT t.*, o1.name as assignee_name, o2.name as creator_name, o3.name as transferor_name
         FROM tickets t 
         LEFT JOIN operators o1 ON t.assigned_to = o1.id 
         LEFT JOIN operators o2 ON t.created_by = o2.id 
+        LEFT JOIN operators o3 ON t.transferred_from = o3.id
         ORDER BY t.created_at DESC
     `, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -166,9 +167,9 @@ app.post('/api/tickets', (req, res) => {
     });
 });
 
-// Update ticket (Assign)
+// Update ticket (Assign/Transfer)
 app.put('/api/tickets/:id', (req, res) => {
-    const { assigned_to, status } = req.body;
+    const { assigned_to, status, transferred_from } = req.body;
     const { id } = req.params;
     
     let query = "UPDATE tickets SET ";
@@ -182,6 +183,10 @@ app.put('/api/tickets/:id', (req, res) => {
     if (status !== undefined) {
         updates.push("status = ?");
         params.push(status);
+    }
+    if (transferred_from !== undefined) {
+        updates.push("transferred_from = ?");
+        params.push(transferred_from);
     }
     
     if (updates.length === 0) return res.json({ success: true }); 

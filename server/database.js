@@ -87,9 +87,11 @@ const bcrypt = require('bcryptjs');
     status TEXT DEFAULT 'pending',
     assigned_to INTEGER,
     created_by INTEGER,
+    transferred_from INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(assigned_to) REFERENCES operators(id),
-    FOREIGN KEY(created_by) REFERENCES operators(id)
+    FOREIGN KEY(created_by) REFERENCES operators(id),
+    FOREIGN KEY(transferred_from) REFERENCES operators(id)
   )`);
 
   // Migration: Add created_by if it doesn't exist
@@ -98,6 +100,10 @@ const bcrypt = require('bcryptjs');
     const hasCreatedBy = columns.some(col => col.name === 'created_by');
     if (!hasCreatedBy) {
       db.run("ALTER TABLE tickets ADD COLUMN created_by INTEGER REFERENCES operators(id)");
+    }
+    const hasTransferredFrom = columns.some(col => col.name === 'transferred_from');
+    if (!hasTransferredFrom) {
+      db.run("ALTER TABLE tickets ADD COLUMN transferred_from INTEGER REFERENCES operators(id)");
     }
   });
   
