@@ -485,6 +485,25 @@ function AdminPanel({ operators, refresh, addToast, setConfirmModal }) {
         addToast('Usuario eliminado', 'success');
     };
 
+    const handleCleanup = async () => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Limpieza Total de Historial',
+            message: '¿Estás seguro de que quieres borrar TODOS los tickets completados? Esta acción liberará espacio pero perderás el historial de los operadores. No se puede deshacer.',
+            onConfirm: async () => {
+                setConfirmModal(null);
+                try {
+                    const res = await fetch('/api/tickets/cleanup', { method: 'POST' });
+                    const data = await res.json();
+                    if (res.ok) {
+                        addToast(`Limpieza completada: ${data.count} tickets eliminados`, 'success');
+                        refresh();
+                    }
+                } catch (err) { addToast('Error en la limpieza', 'error'); }
+            }
+        });
+    };
+
     // ... render
     return (
         <div className="bg-surface border border-white/5 rounded-2xl p-6 sticky top-8">
@@ -516,6 +535,21 @@ function AdminPanel({ operators, refresh, addToast, setConfirmModal }) {
                         )}
                     </div>
                 ))}
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-white/10">
+                <h3 className="text-sm font-bold text-textMuted uppercase mb-4 flex items-center gap-2">
+                    <Trash2 className="w-4 h-4 text-error/70" /> Mantenimiento
+                </h3>
+                <button
+                    onClick={handleCleanup}
+                    className="w-full flex items-center justify-center gap-2 bg-error/10 hover:bg-error/20 text-error border border-error/30 p-3 rounded-xl text-xs font-bold transition-all"
+                >
+                    <Trash2 className="w-4 h-4" /> Borrar TODOS los tickets finalizados
+                </button>
+                <p className="text-[10px] text-textMuted mt-2 italic text-center opacity-70">
+                    * El sistema también realiza una limpieza automática todos los viernes a las 18:00h.
+                </p>
             </div>
         </div>
     );

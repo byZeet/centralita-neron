@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const cron = require('node-cron');
 const db = require('./database');
 
 const app = express();
@@ -153,6 +154,30 @@ app.get('/api/tickets', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ tickets: rows });
     });
+});
+
+// Cleanup old completed tickets (>30 days)
+function cleanupOldTickets() {
+    console.log('Running scheduled ticket cleanup...');
+    db.run("DELETE FROM tickets WHERE status = 'completed' AND created_at < datetime('now', '-30 days')", function(err) {
+        if (err) console.error('Error during cleanup:', err.message);
+        else console.log(`Deleted ${this.changes} old completed tickets.`);
+    });
+}
+
+// Manual cleanup route - Deletes ALL completed tickets
+app.post('/api/tickets/cleanup', (req, res) => {
+    db.run("DELETE FROM tickets WHERE status = 'completed'", function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Limpieza total completada', count: this.changes });
+    });
+});
+
+// Schedule cleanup: Every Friday at 18:00
+cron.schedule('0 18 * * 5', () => {
+    cleanupOldTickets();
+}, {
+    timezone: "Europe/Madrid"
 });
 
 // Create ticket
