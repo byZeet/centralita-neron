@@ -1,7 +1,32 @@
-const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 const path = require('path');
 
-const dbPath = path.resolve(__dirname, 'neron.db');
+// Portability Support for PKG executable
+let sqlite3;
+try {
+    // Standard load
+    sqlite3 = require('sqlite3').verbose();
+} catch (e) {
+    // If we are inside PKG, we might need to load the .node file manually from the local folder
+    try {
+        const bindingPath = path.resolve(process.cwd(), 'node_sqlite3.node');
+        const binding = require(bindingPath);
+        sqlite3 = require('sqlite3').verbose(); 
+        // Note: some versions of sqlite3 need more complex binding injection, 
+        // but often just having it in the same dir or using a custom loader works.
+    } catch (err) {
+        console.error("Critical: Could not load sqlite3 binding. Please ensure node_sqlite3.node is next to the .exe");
+        process.exit(1);
+    }
+}
+
+// We want the database to stay in a folder "BaseCentralita" next to the .exe
+const baseDir = path.join(process.cwd(), 'BaseCentralita');
+if (!fs.existsSync(baseDir)) {
+    fs.mkdirSync(baseDir, { recursive: true });
+}
+
+const dbPath = path.resolve(baseDir, 'neron.db');
 const db = new sqlite3.Database(dbPath);
 
 // Enable Write-Ahead Logging to fix concurrency/locking issues
