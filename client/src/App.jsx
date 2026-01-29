@@ -8,6 +8,14 @@ function cn(...inputs) {
     return twMerge(clsx(inputs));
 }
 
+// Utility to handle SQLite UTC dates
+function parseUTCDate(dateStr) {
+    if (!dateStr) return new Date();
+    // SQLite format: YYYY-MM-DD HH:MM:SS (UTC)
+    // Convert to ISO: YYYY-MM-DDTHH:MM:SSZ
+    return new Date(dateStr.replace(' ', 'T') + 'Z');
+}
+
 const STATUS_CONFIG = {
     available: { label: 'Libre', color: 'text-success', bg: 'bg-success/10', border: 'border-success/20', icon: CheckCircle },
     busy: { label: 'Ocupado', color: 'text-error', bg: 'bg-error/10', border: 'border-error/20', icon: XCircle },
@@ -96,7 +104,7 @@ function TicketCard({ ticket, onAssign, onComplete, onTransfer, user }) {
                 </div>
                 <span className="text-[10px] text-textMuted flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {parseUTCDate(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
                 </span>
             </div>
 
@@ -407,7 +415,7 @@ function TicketHistoryModal({ operator, tickets, onClose }) {
                                         </div>
                                         <span className="text-xs text-textMuted flex items-center gap-1 mt-0.5"><PhoneIncoming className="w-3 h-3" /> {t.client_number}</span>
                                     </div>
-                                    <span className="text-xs text-textMuted bg-white/5 px-2 py-1 rounded-lg">{new Date(t.created_at).toLocaleString()}</span>
+                                    <span className="text-xs text-textMuted bg-white/5 px-2 py-1 rounded-lg">{parseUTCDate(t.created_at).toLocaleString([], { hour12: false })}</span>
                                 </div>
                                 <div className="text-sm text-textMuted mt-2 bg-black/20 p-3 rounded-lg italic border-l-2 border-primary/30">
                                     "{t.issue_description}"
@@ -1026,7 +1034,7 @@ export default function App() {
                 </div>
 
                 {/* Middle Column: Ticket Queue */}
-                <div className="md:col-span-4 xl:col-span-3 h-fit sticky top-8">
+                <div className="md:col-span-4 xl:col-span-3 h-fit md:sticky md:top-8 z-10">
                     <TicketQueue
                         tickets={tickets}
                         onAssign={handleAssignTicket}
