@@ -40,6 +40,9 @@ if not exist PackNeronCentralita mkdir PackNeronCentralita
 :: Copiar el ejecutable
 copy /Y NeronCentralita.exe PackNeronCentralita\NeronCentralita.exe >nul
 
+:: Borrar el original de la raiz para no duplicar
+del NeronCentralita.exe
+
 :: Copiar el motor de la base de datos (IMPORTANTE)
 if exist server\node_modules\sqlite3\build\Release\node_sqlite3.node (
     copy /Y server\node_modules\sqlite3\build\Release\node_sqlite3.node PackNeronCentralita\node_sqlite3.node >nul
