@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Phone, User, Clock, CheckCircle, XCircle, MinusCircle, LogIn, Monitor, RefreshCw, Trash2, AlertTriangle, Check, X, Ticket, Plus, Calendar, MessageSquare, PhoneIncoming, FileText, ChevronRight, ArrowRightCircle } from 'lucide-react';
+import { Phone, User, Clock, CheckCircle, XCircle, MinusCircle, LogIn, Monitor, RefreshCw, Trash2, AlertTriangle, Check, X, Ticket, Plus, Calendar, MessageSquare, PhoneIncoming, FileText, ChevronRight, ArrowRightCircle, Sun, Moon } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -579,6 +579,26 @@ export default function App() {
     const [transferTicketId, setTransferTicketId] = useState(null);
     const [viewTicketOperator, setViewTicketOperator] = useState(null);
 
+    // Theme State
+    const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('neron_theme') !== 'light');
+
+    // Apply Theme
+    useEffect(() => {
+        if (isDarkMode) {
+            document.documentElement.classList.remove('light');
+        } else {
+            document.documentElement.classList.add('light');
+        }
+    }, [isDarkMode]);
+
+    const toggleTheme = () => {
+        setIsDarkMode(prev => {
+            const newMode = !prev;
+            localStorage.setItem('neron_theme', newMode ? 'dark' : 'light');
+            return newMode;
+        });
+    };
+
     const addToast = (message, type = 'success') => {
         const id = Date.now() + Math.random();
         setToasts(prev => [...prev, { id, message, type }]);
@@ -931,37 +951,47 @@ export default function App() {
                     <h1 className="text-2xl font-bold tracking-tight">Centralita <span className="text-primary">Nerón</span></h1>
                 </div>
 
-                <div className="flex items-center gap-4 bg-surface p-2 pr-4 pl-4 rounded-full border border-white/5 shadow-sm">
-                    <div className="w-9 h-9 min-w-9 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center font-bold text-sm shadow-inner text-white">
-                        {user.name.charAt(0)}
-                    </div>
-                    <div className="flex flex-col mr-2 min-w-[180px]">
-                        <span className="font-medium text-sm leading-none flex items-center gap-2 truncate">
-                            {user.name}
-                            <span className="text-primary bg-primary/10 px-1 rounded text-[10px] font-mono">#{user.extension || '---'}</span>
-                        </span>
-                        <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
-                            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", STATUS_CONFIG[user.status]?.color.replace('text-', 'bg-') || 'bg-gray-500')}></span>
-                            <span className="text-[10px] text-textMuted leading-none font-medium whitespace-nowrap w-[60px] inline-block">{STATUS_CONFIG[user.status]?.label || 'Desconectado'}</span>
-
-                            <span className="text-[10px] text-textMuted opacity-50 mx-0.5 shrink-0">|</span>
-                            {user.shift && SHIFT_CONFIG[user.shift] ? (
-                                <span className={cn("text-[10px] leading-none font-medium whitespace-nowrap w-[45px] inline-block text-center", SHIFT_CONFIG[user.shift].color)}>
-                                    {SHIFT_CONFIG[user.shift].label}
-                                </span>
-                            ) : (
-                                <span className="text-[10px] leading-none font-medium whitespace-nowrap w-[45px] inline-block text-center text-textMuted/50">
-                                    ---
-                                </span>
-                            )}
-
-                            <span className="text-[10px] text-textMuted opacity-50 mx-0.5 shrink-0">|</span>
-                            <span className="text-[10px] text-textMuted leading-none truncate block max-w-[100px]" title={user.department}>{user.department}</span>
-                        </div>
-                    </div>
-                    <button onClick={handleLogout} className="text-xs text-textMuted hover:text-white underline ml-2 border-l border-white/10 pl-4 h-full transition-colors">
-                        Salir
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={toggleTheme}
+                        className="p-2 rounded-full bg-surface border border-white/5 hover:bg-surfaceHighlight text-textMuted hover:text-primary transition-all shadow-sm"
+                        title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                    >
+                        {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                     </button>
+
+                    <div className="flex items-center gap-4 bg-surface p-2 pr-4 pl-4 rounded-full border border-white/5 shadow-sm">
+                        <div className="w-9 h-9 min-w-9 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center font-bold text-sm shadow-inner text-white">
+                            {user.name.charAt(0)}
+                        </div>
+                        <div className="flex flex-col mr-2 min-w-[180px]">
+                            <span className="font-medium text-sm leading-none flex items-center gap-2 truncate">
+                                {user.name}
+                                <span className="text-primary bg-primary/10 px-1 rounded text-[10px] font-mono">#{user.extension || '---'}</span>
+                            </span>
+                            <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
+                                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", STATUS_CONFIG[user.status]?.color.replace('text-', 'bg-') || 'bg-gray-500')}></span>
+                                <span className="text-[10px] text-textMuted leading-none font-medium whitespace-nowrap w-[60px] inline-block">{STATUS_CONFIG[user.status]?.label || 'Desconectado'}</span>
+
+                                <span className="text-[10px] text-textMuted opacity-50 mx-0.5 shrink-0">|</span>
+                                {user.shift && SHIFT_CONFIG[user.shift] ? (
+                                    <span className={cn("text-[10px] leading-none font-medium whitespace-nowrap w-[45px] inline-block text-center", SHIFT_CONFIG[user.shift].color)}>
+                                        {SHIFT_CONFIG[user.shift].label}
+                                    </span>
+                                ) : (
+                                    <span className="text-[10px] leading-none font-medium whitespace-nowrap w-[45px] inline-block text-center text-textMuted/50">
+                                        ---
+                                    </span>
+                                )}
+
+                                <span className="text-[10px] text-textMuted opacity-50 mx-0.5 shrink-0">|</span>
+                                <span className="text-[10px] text-textMuted leading-none truncate block max-w-[100px]" title={user.department}>{user.department}</span>
+                            </div>
+                        </div>
+                        <button onClick={handleLogout} className="text-xs text-textMuted hover:text-white underline ml-2 border-l border-white/10 pl-4 h-full transition-colors">
+                            Salir
+                        </button>
+                    </div>
                 </div>
             </header>
 

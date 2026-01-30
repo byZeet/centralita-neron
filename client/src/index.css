@@ -3,8 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: #0a0a0a;
+    --surface: #121212;
+    --surface-highlight: #1E1E1E;
+    --text: #f3f4f6;
+    --text-muted: #9ca3af;
+    --border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .light {
+    --background: #f0f2f5;
+    --surface: #ffffff;
+    --surface-highlight: #e4e6eb;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --border-color: rgba(0, 0, 0, 0.1);
+  }
+
   body {
-    @apply antialiased;
+    @apply antialiased text-text bg-background transition-colors duration-300;
   }
 }
 
