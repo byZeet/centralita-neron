@@ -13,12 +13,30 @@
   }
 
   .light {
-    --background: #f0f2f5;
+    --background: #f1f5f9;
+    /* Slate-100 - Crisp/Cool gray */
     --surface: #ffffff;
-    --surface-highlight: #e4e6eb;
-    --text: #1f2937;
-    --text-muted: #6b7280;
-    --border-color: rgba(0, 0, 0, 0.1);
+    --surface-highlight: #e2e8f0;
+    /* Slate-200 */
+    --text: #0f172a;
+    /* Slate-900 */
+    --text-muted: #64748b;
+    /* Slate-500 */
+    --border-color: #cbd5e1;
+    /* Slate-300 */
+  }
+
+  /* Light mode scrollbar overrides */
+  :global(.light) .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  :global(.light) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  :global(.light) .custom-scrollbar {
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
   }
 
   body {

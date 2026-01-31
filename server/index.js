@@ -225,6 +225,105 @@ app.put('/api/tickets/:id', (req, res) => {
     });
 });
 
+// --- CHAT API ---
+
+// Create Channel (Group or DM)
+app.post('/api/channels', (req, res) => {
+    const { name, type, members, created_by } = req.body; // members = [user_id, ...]
+
+    if (type === 'dm') {
+        // Check if DM already exists between these 2 users
+        // Members should contain [userA, userB]
+         const memberParams = members.sort().join(',');
+         // Doing a precise check is hard in pure SQL without join complexity.
+         // Simpler approach: Create if not exists logic in frontend or just always create and filter duplicates?
+         // Better: frontend checks if channel exists in list.
+    }
+
+    db.run("INSERT INTO channels (name, type, created_by) VALUES (?, ?, ?)", [name, type, created_by], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        const channelId = this.lastID;
+        
+        // Add members
+        const stmt = db.prepare("INSERT INTO channel_members (channel_id, user_id) VALUES (?, ?)");
+        members.forEach(uid => stmt.run(channelId, uid));
+        stmt.finalize();
+
+        res.json({ id: channelId, name, type });
+    });
+});
+
+// Get Channels for User
+app.get('/api/channels', (req, res) => {
+    const userId = req.query.user_id;
+    const userDept = req.query.department;
+
+    if (!userId) return res.status(400).json({ error: "User ID required" });
+
+    // Fetch Global, My Dept, and any channel I am a member of
+    db.all(`
+        SELECT DISTINCT c.*,
+        (SELECT MAX(created_at) FROM messages m WHERE m.channel_id = c.id) as last_message_at
+        FROM channels c
+        LEFT JOIN channel_members cm ON c.id = cm.channel_id
+        WHERE 
+           c.type = 'global' 
+           OR (c.type = 'department' AND c.department_target = ?)
+           OR cm.user_id = ?
+    `, [userDept, userId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // For DMs, we might want to fetch the "other user's name" to display
+        // But we can handle that in frontend by matching member list.
+        // Let's attach members to the channels for simpler frontend handling
+        const promises = rows.map(channel => {
+            return new Promise((resolve) => {
+                db.all("SELECT user_id FROM channel_members WHERE channel_id = ?", [channel.id], (err, members) => {
+                    channel.members = members.map(m => m.user_id);
+                    resolve(channel);
+                });
+            });
+        });
+
+        Promise.all(promises).then(channels => res.json({ channels }));
+    });
+});
+
+// Get Messages
+app.get('/api/channels/:id/messages', (req, res) => {
+    db.all(`
+        SELECT m.*, o.name as sender_name 
+        FROM messages m
+        JOIN operators o ON m.sender_id = o.id
+        WHERE m.channel_id = ?
+        ORDER BY m.created_at ASC
+    `, [req.params.id], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ messages: rows });
+    });
+});
+
+// Send Message
+app.post('/api/channels/:id/messages', (req, res) => {
+    const { sender_id, content } = req.body;
+    const channelId = req.params.id;
+    
+    db.run("INSERT INTO messages (channel_id, sender_id, content) VALUES (?, ?, ?)", [channelId, sender_id, content], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID });
+    });
+});
+
+
+// Chat Cleanup: Every Sunday at 00:00
+cron.schedule('0 0 * * 0', () => {
+    console.log('Running weekly chat cleanup...');
+    db.run("DELETE FROM messages", (err) => {
+        if (err) console.error('Error cleaning chat:', err.message);
+        else console.log('Chat messages cleared.');
+    });
+}, { timezone: "Europe/Madrid" });
+
 // Serve frontend in production (after build)
 const clientBuildPath = path.join(__dirname, '../client/dist');
 app.use(express.static(clientBuildPath));

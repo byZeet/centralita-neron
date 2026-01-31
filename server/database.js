@@ -131,6 +131,51 @@ const bcrypt = require('bcryptjs');
       db.run("ALTER TABLE tickets ADD COLUMN transferred_from INTEGER REFERENCES operators(id)");
     }
   });
+
+  // --- CHAT SYSTEM ---
+  db.run(`CREATE TABLE IF NOT EXISTS channels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    type TEXT, 
+    department_target TEXT,
+    created_by INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS channel_members (
+    channel_id INTEGER,
+    user_id INTEGER,
+    PRIMARY KEY (channel_id, user_id)
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel_id INTEGER,
+    sender_id INTEGER,
+    content TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(channel_id) REFERENCES channels(id) ON DELETE CASCADE,
+    FOREIGN KEY(sender_id) REFERENCES operators(id)
+  )`, (err) => {
+    if (!err) {
+        // Seed Default Channels
+        db.get("SELECT count(*) as count FROM channels WHERE type = 'global'", (err, row) => {
+            if (row && row.count === 0) {
+                 db.run("INSERT INTO channels (name, type) VALUES ('General', 'global')");
+            }
+        });
+        
+        const depts = ['Dpto.Programación', 'Dpto.Técnicos', 'Dpto.Comercial', 'Dpto.Administración'];
+        depts.forEach(dept => {
+             db.get("SELECT count(*) as count FROM channels WHERE type = 'department' AND department_target = ?", [dept], (err, row) => {
+                if (row && row.count === 0) {
+                     db.run("INSERT INTO channels (name, type, department_target) VALUES (?, 'department', ?)", [dept, dept]);
+                }
+             });
+        });
+    }
+  });
+  // -------------------
   
   // Seed initial data
   db.get("SELECT count(*) as count FROM operators", (err, row) => {
